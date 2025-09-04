@@ -1,5 +1,7 @@
 - name: Proxmox stuff
-  hosts: pve
+  hosts: localhost   # <-- UBAH INI
+  connection: local  # <-- TAMBAHKAN INI
+  gather_facts: no   # <-- TAMBAHKAN INI (praktik yang baik)
   vars:
     name: ubuntu
   tasks:

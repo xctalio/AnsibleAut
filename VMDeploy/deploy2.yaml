@@ -11,7 +11,7 @@
         api_user    : root@pam
         api_token_id: 1f2f8879-6ee8-4141-988e-ddfeec2954e9
         api_host    : 192.168.210.137
-        api_password: proxmox_password
+        api_token_secret: 
         clone       : UbuntuServTemplate
         name        : "{{ yeppers }}"
         node        : pve

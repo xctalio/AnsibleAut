@@ -1,5 +1,5 @@
 ---
-- name: "Deploy and Start a New VM (Efficient Version)"
+- name: "Deploy and Start a New VM (Explicit Full Clone)"
   hosts: localhost
   connection: local
   gather_facts: no
@@ -23,8 +23,13 @@
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
+
         node: "{{ proxmox_node }}"
         clone: "{{ template_vmid }}"
         vmid: "{{ new_vmid }}"
         name: "{{ new_vm_name }}"
-        state: started # Menggabungkan pembuatan dan start
+        state: started
+
+        # [PERBAIKAN KUNCI] Menegaskan bahwa kita ingin kloning penuh,
+        # sama seperti saat melakukan kloning manual.
+        full: yes

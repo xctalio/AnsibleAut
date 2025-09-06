@@ -18,7 +18,7 @@
 
     # --- Konfigurasi VM Baru ---
     template_name: "UbuntuServTemplate"
-    new_vmid: 101                        # <-- [PERBAIKAN 1] Tambahkan ID untuk VM baru
+    new_vmid: 102                        # <-- [PERBAIKAN 1] Tambahkan ID untuk VM baru
     new_vm_name: "freshbakevm-ubuntu"
     target_storage: "local-lvm"
   

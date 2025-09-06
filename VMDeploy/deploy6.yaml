@@ -1,5 +1,5 @@
 ---
-- name: "Deploy and Start a New VM with Automatic VM ID"
+- name: "Deploy and Start a New VM (Efficient Version)"
   hosts: localhost
   connection: local
   gather_facts: no
@@ -8,52 +8,23 @@
     - secrets.yml
 
   vars:
-    # --- Detail Koneksi Proxmox ---
     proxmox_host: "192.168.210.137"
     proxmox_user: "root@pam"
     proxmox_token_id: "demov2"
     proxmox_node: "pve"
-
-    # --- Konfigurasi VM ---
     template_vmid: 100
-    # Kita tidak perlu 'new_vmid' di sini lagi, karena akan dibuat otomatis
-    new_vm_name: "apaelotega"
-  
+    new_vmid: 105
+    new_vm_name: "freshbakevm-ubuntu"
+
   tasks:
-    - name: "TASK 1: Get latest VM facts from Proxmox"
-      community.general.proxmox_facts:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-
-    - name: "TASK 2: Calculate the next available VM ID"
-      ansible.builtin.set_fact:
-        # 1. 'proxmox_vms' adalah daftar semua VM.
-        # 2. 'map(attribute='vmid')' mengambil semua nilai 'vmid'-nya saja.
-        # 3. 'max' mencari nilai tertinggi.
-        # 4. '+ 1' menambahkannya dengan satu.
-        new_vmid: "{{ (proxmox_vms | map(attribute='vmid') | max) + 1 }}"
-
-    - name: "TASK 3: Clone template {{ template_vmid }} to new VM {{ new_vmid }}"
+    - name: "Clone template {{ template_vmid }} to create and start VM {{ new_vmid }}"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
-
         node: "{{ proxmox_node }}"
         clone: "{{ template_vmid }}"
-        vmid: "{{ new_vmid }}" # Menggunakan VM ID yang baru dihitung
-        name: "{{ new_vm_name }}-{{ new_vmid }}" # Menambahkan ID ke nama agar unik
-        
-    - name: "TASK 4: Start the newly created VM {{ new_vmid }}"
-      community.general.proxmox_kvm:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-
-        node: "{{ proxmox_node }}"
         vmid: "{{ new_vmid }}"
-        state: started
+        name: "{{ new_vm_name }}"
+        state: started # Menggabungkan pembuatan dan start

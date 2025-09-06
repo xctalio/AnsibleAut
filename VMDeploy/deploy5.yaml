@@ -13,11 +13,11 @@
     proxmox_token_id: "demov2"
     proxmox_node: "pve"
     template_vmid: 100
-    new_vmid: 102
+    new_vmid: 100
     new_vm_name: "freshbakevm-ubuntu"
 
   tasks:
-    - name: "STEP 1: Clone template {{ template_vmid }} to new VM {{ new_vmid }}"
+    - name: "Clone template {{ template_vmid }} to new VM {{ new_vmid }}"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
@@ -30,7 +30,7 @@
         name: "{{ new_vm_name }}"
         # Kita HAPUS 'state: started' dari tugas ini
 
-    - name: "STEP 2: Start the newly created VM {{ new_vmid }}"
+    - name: "Start the newly created VM {{ new_vmid }}"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"

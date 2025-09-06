@@ -1,36 +1,49 @@
 ---
-- name: "Direct API Clone Test"
+- name: "Deploy and Start a New VM with Automatic VM ID"
   hosts: localhost
   connection: local
   gather_facts: no
 
+  vars_files:
+    - secrets.yml
+
   vars:
     proxmox_host: "192.168.210.137"
     proxmox_user: "root@pam"
-    proxmox_password: "PASSWORD_BARU_ANDA" # <-- Masukkan password sementara di sini
+    proxmox_token_id: "demov2"
     proxmox_node: "pve"
     template_vmid: 100
-    new_vmid: 105
     new_vm_name: "freshbakevm-ubuntu"
-
+  
   tasks:
-    - name: "Attempting to clone VM {{ template_vmid }} via direct API call"
-      ansible.builtin.uri:
-        url: "https://{{ proxmox_host }}:8006/api2/json/nodes/{{ proxmox_node }}/qemu/{{ template_vmid }}/clone"
-        method: POST
-        validate_certs: no
-        headers:
-          # Otentikasi menggunakan tiket Proxmox
-          Cookie: "PVEAuthCookie={{ proxmox_ticket.json.data.ticket }}"
-          CSRFPreventionToken: "{{ proxmox_ticket.json.data.CSRFPreventionToken }}"
-        body_format: json
-        body:
-          newid: "{{ new_vmid }}"
-          name: "{{ new_vm_name }}"
-          full: 1 # 1 berarti 'yes' untuk kloning penuh
-        status_code: 200 # Harapkan kode sukses
-      
-      # Ini adalah trik untuk mendapatkan tiket otentikasi terlebih dahulu
-      # Blok ini akan dijalankan sebelum task utama karena 'no_log' dan dependensinya
-      vars:
-        proxmox_ticket: "{{ lookup('url', 'https://' + proxmox_host + ':8006/api2/json/access/ticket', method='post', data={'username': proxmox_user, 'password': proxmox_password}, validate_certs=False) }}"
+    - name: "Get latest VM facts from Proxmox"
+      community.general.proxmox_facts:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+
+    - name: "Calculate the next available VM ID"
+      ansible.builtin.set_fact:
+        new_vmid: "{{ (proxmox_vms | map(attribute='vmid') | max) + 1 }}"
+
+    - name: "Clone template {{ template_vmid }} to new VM {{ new_vmid }}"
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        clone: "{{ template_vmid }}"
+        vmid: "{{ new_vmid }}"
+        name: "{{ new_vm_name }}-{{ new_vmid }}"
+        
+    - name: "Start the newly created VM {{ new_vmid }}"
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_vmid }}"
+        state: started

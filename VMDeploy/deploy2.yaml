@@ -9,7 +9,7 @@
         yeppers: "freshbakevm-ubuntu"
     - proxmox_kvm:
         api_user    : root@pam
-        api_token_id: demo
+        api_token_id: demov2
         api_host    : 192.168.210.137
         api_token_secret: 
         clone       : UbuntuServTemplate
@@ -21,7 +21,7 @@
     - name: start vm
       proxmox_kvm:
         api_user: root@pam
-        api_token_id: demo
+        api_token_id: demov2
         api_host: 192.168.210.137
         name: "{{ yeppers }}"
         node: pve

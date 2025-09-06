@@ -13,7 +13,7 @@
     # --- Detail Koneksi Proxmox ---
     proxmox_host: "192.168.210.137"
     proxmox_user: "root@pam"
-    proxmox_token_id: "demo" # Token ID Anda
+    proxmox_token_id: "demov2" # Token ID Anda
     proxmox_node: "pve"
 
     # --- Konfigurasi VM Baru ---

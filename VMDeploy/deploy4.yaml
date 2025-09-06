@@ -1,0 +1,42 @@
+---
+- name: "Deploy and Start a New VM from Promox Template"
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  # Memuat data rahasia (api_token_secret) dari file terenkripsi
+  vars_files:
+    - secrets.yml
+
+  # Semua konfigurasi ditempatkan di sini agar mudah diubah
+  vars:
+    # --- Detail Koneksi Proxmox ---
+    proxmox_host: "192.168.210.137"
+    proxmox_user: "root@pam"
+    proxmox_token_id: "demov2" 
+    proxmox_node: "pve"
+
+    # --- Konfigurasi VM Baru ---
+    template_name: "UbuntuServTemplate"
+    new_vmid: 101                        # <-- [PERBAIKAN 1] Tambahkan ID untuk VM baru
+    new_vm_name: "freshbakevm-ubuntu"
+    target_storage: "local-lvm"
+  
+  tasks:
+    # Hanya butuh satu task untuk membuat dan menyalakan VM
+    - name: "Clone template '{{ template_name }}' to create and start VM '{{ new_vm_name }}'"
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+
+        node: "{{ proxmox_node }}"
+        clone: "{{ template_name }}"
+        vmid: "{{ new_vmid }}"               # <-- [PERBAIKAN 2] Gunakan ID baru di sini
+        name: "{{ new_vm_name }}"
+        storage: "{{ target_storage }}"
+        
+        # Opsi 'state: started' sekarang akan menargetkan VM dengan ID baru
+        state: started 
+        timeout: 500

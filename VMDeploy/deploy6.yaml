@@ -17,7 +17,7 @@
     # --- Konfigurasi VM ---
     template_vmid: 100
     # Kita tidak perlu 'new_vmid' di sini lagi, karena akan dibuat otomatis
-    new_vm_name: "freshbakevm-ubuntu"
+    new_vm_name: "apaelotega"
   
   tasks:
     - name: "TASK 1: Get latest VM facts from Proxmox"

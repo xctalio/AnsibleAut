@@ -37,7 +37,7 @@
         clone: "{{ template_vmid }}"
         vmid: "{{ new_vmid }}"
         name: "{{ new_vm_name }}-{{ new_vmid }}"
-        
+    
     - name: "Start the newly created VM {{ new_vmid }}"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"

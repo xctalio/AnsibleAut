@@ -16,18 +16,19 @@
     new_vm_name: "freshbakevm-ubuntu"
   
   tasks:
-    - name: "Get latest VM facts from Proxmox"
+    - name: "TASK 1: Get latest VM facts from Proxmox"
       community.general.proxmox_facts:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
 
-    - name: "Calculate the next available VM ID"
+    - name: "TASK 2: Calculate the next available VM ID"
       ansible.builtin.set_fact:
         new_vmid: "{{ (proxmox_vms | map(attribute='vmid') | max) + 1 }}"
 
-    - name: "Clone template and start the new VM"
+    # [PERBAIKAN] Tugas kloning dipisah dan hanya untuk membuat VM
+    - name: "TASK 3: Clone template {{ template_vmid }} to new VM {{ new_vmid }}"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
@@ -37,5 +38,15 @@
         clone: "{{ template_vmid }}"
         vmid: "{{ new_vmid }}"
         name: "{{ new_vm_name }}-{{ new_vmid }}"
-        state: started
-        full: yes
+        full: yes # Memastikan kloning penuh
+        
+    # [PERBAIKAN] Tugas baru yang HANYA untuk menyalakan VM
+    - name: "TASK 4: Start the newly created VM {{ new_vmid }}"
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_vmid }}"
+        state: started # Tugas ini hanya mengubah status menjadi 'started'

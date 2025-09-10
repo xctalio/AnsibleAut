@@ -39,10 +39,16 @@
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
         vmid: "{{ new_vmid }}"
-        template: no  # Langsung ubah template flag ke no
+        template: no
       when: clone_result.changed
+      register: convert_result
       retries: 5
       delay: 3
+
+    - name: "Wait 10 seconds after conversion"
+      ansible.builtin.wait_for:
+        timeout: 10
+      when: convert_result.changed
 
     - name: "Start the newly created VM {{ new_vmid }}"
       community.general.proxmox_kvm:

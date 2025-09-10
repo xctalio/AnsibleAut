@@ -1,38 +1,26 @@
----
-- name: "Deploy and Start a New VM from Proxmox Template"
-  hosts: localhost
-  connection: local
-  gather_facts: no
+- name: "Clone template {{ template_vmid }} to new VM {{ new_vmid }}"
+  community.general.proxmox_kvm:
+    api_host: "{{ proxmox_host }}"
+    api_user: "{{ proxmox_user }}"
+    api_token_id: "{{ proxmox_token_id }}"
+    api_token_secret: "{{ proxmox_api_secret }}"
+    node: "{{ proxmox_node }}"
+    clone: "{{ template_vmid }}"
+    vmid: "{{ new_vmid }}"
+    name: "{{ new_vm_name }}"
+  register: clone_result  # Catat hasil kloning
 
-  vars_files:
-    - secrets.yml
+- name: "Tunggu 30 detik untuk proses kloning selesai"
+  ansible.builtin.wait_for:
+    timeout: 30
+  when: clone_result.changed  # Hanya tunggu jika kloning berhasil
 
-  vars:
-    # --- Detail Koneksi Proxmox ---
-    proxmox_host: "192.168.210.137"
-    proxmox_user: "root@pam"
-    proxmox_token_id: "demov2"
-    proxmox_node: "pve"
-
-    # --- Konfigurasi VM Baru ---
-    template_vmid: 100                  # <-- [PERBAIKAN 1] Masukkan ID template di sini
-    new_vmid: 102                        
-    new_vm_name: "freshbakevm-ubuntu"
-    target_storage: "local-lvm"
-  
-  tasks:
-    - name: "Clone template '{{ template_vmid }}' to create and start VM '{{ new_vm_name }}'"
-      community.general.proxmox_kvm:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-
-        node: "{{ proxmox_node }}"
-        clone: "{{ template_vmid }}"         # <-- [PERBAIKAN 2] Gunakan variabel ID di sini
-        vmid: "{{ new_vmid }}"               
-        name: "{{ new_vm_name }}"
-        storage: "{{ target_storage }}"
-        
-        state: started 
-        timeout: 500
+- name: "Start the newly created VM {{ new_vmid }}"
+  community.general.proxmox_kvm:
+    api_host: "{{ proxmox_host }}"
+    api_user: "{{ proxmox_user }}"
+    api_token_id: "{{ proxmox_token_id }}"
+    api_token_secret: "{{ proxmox_api_secret }}"
+    node: "{{ proxmox_node }}"
+    vmid: "{{ new_vmid }}"
+    state: started

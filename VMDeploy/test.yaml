@@ -1,5 +1,5 @@
 ---
-- name: "Clone VM Template"
+- name: "Clone VM with Automatic VM ID"
   hosts: localhost
   connection: local
   gather_facts: no
@@ -14,11 +14,24 @@
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
     template_vmid: 100
-    new_vmid: 999  # Pastikan ID ini belum digunakan!
-    new_vm_name: "cloned-vm"
+    starting_vmid: 900
 
   tasks:
-    - name: "Clone template to new VM"
+    - name: "Get list of existing VMs using proxmox_kvm"
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ template_vmid }}"  # Gunakan VM yang sudah ada
+      register: vm_info
+
+    - name: "Debug to see available VM IDs"
+      debug:
+        msg: "VM info: {{ vm_info }}"
+
+    - name: "Clone template to new VM {{ starting_vmid }}"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
@@ -26,18 +39,6 @@
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
         clone: "{{ template_vmid }}"
-        vmid: "{{ new_vmid }}"
-        name: "{{ new_vm_name }}"
+        vmid: "{{ starting_vmid }}"
+        name: "clone-{{ starting_vmid }}"
         timeout: 300
-      register: clone_result
-
-    - name: "Start the cloned VM"
-      community.general.proxmox_kvm:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-        node: "{{ proxmox_node }}"
-        vmid: "{{ new_vmid }}"
-        state: started
-      when: clone_result.changed

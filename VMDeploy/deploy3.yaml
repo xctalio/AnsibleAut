@@ -13,7 +13,7 @@
     proxmox_token_id: "demov1"
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
-    proxmox_storage: "local-lvm"  # ✅ Variabel untuk storage yang benar
+    proxmox_storage: "local-lvm"
     template_vmid: 100
     new_vmid: 100
     new_vm_name: "freshbakevm-ubuntu"
@@ -31,8 +31,8 @@
         name: "{{ new_vm_name }}"
         timeout: 600
       register: clone_result
-      async: 720  # ✅ Jalankan secara async
-      poll: 0     # ✅ Tidak menunggu polling
+      async: 720
+      poll: 0
 
     - name: "Wait for clone operation to complete"
       async_status:
@@ -50,7 +50,7 @@
         PM_USER: "{{ proxmox_user }}"
         PM_TOKEN_ID: "{{ proxmox_token_id }}"
         PM_TOKEN_SECRET: "{{ proxmox_api_secret }}"
-      when: clone_job_result.finished and clone_job_result.job_status == "COMPLETED"
+      when: clone_job_result.finished  # ✅ Diperbaiki
       register: qm_result
       retries: 3
       delay: 5

@@ -13,8 +13,8 @@
     proxmox_token_id: "demov1"
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
-    template_vmid: 101
-    new_vmid: 105
+    template_vmid: 100
+    new_vmid: 100
     new_vm_name: "freshbakevm-ubuntu"
 
   tasks:

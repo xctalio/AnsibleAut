@@ -14,7 +14,7 @@
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
     template_vmid: 101
-    new_vmid: 101
+    new_vmid: 105
     new_vm_name: "freshbakevm-ubuntu"
 
   tasks:

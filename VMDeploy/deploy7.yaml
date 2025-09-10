@@ -1,0 +1,40 @@
+---
+- name: "Create Fresh VM (No Template)"
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - secrets.yml
+
+  vars:
+    proxmox_host: "192.168.210.135"
+    proxmox_user: "root@pam"
+    proxmox_token_id: "demov1"
+    proxmox_api_secret: "{{ proxmox_api_secret }}"
+    proxmox_node: "pve"
+    new_vmid: 101
+
+  tasks:
+    - name: "Create new blank VM"
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_vmid }}"
+        name: "fresh-vm"
+        memory: 1024
+        cores: 1
+        state: present
+
+    - name: "Start the new VM"
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_vmid }}"
+        state: started

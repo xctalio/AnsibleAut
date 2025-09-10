@@ -13,7 +13,6 @@
     proxmox_token_id: "demov1"
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
-    proxmox_storage: "local-lvm"
     template_vmid: 100
     new_vmid: 100
     new_vm_name: "freshbakevm-ubuntu"
@@ -31,16 +30,11 @@
         name: "{{ new_vm_name }}"
         timeout: 600
       register: clone_result
-      async: 720
-      poll: 0
 
-    - name: "Wait for clone operation to complete"
-      async_status:
-        jid: "{{ clone_result.ansible_job_id }}"
-      register: clone_job_result
-      until: clone_job_result.finished
-      retries: 30
-      delay: 10
+    - name: "Wait 30 seconds for clone to complete"
+      ansible.builtin.wait_for:
+        timeout: 30
+      when: clone_result.changed
 
     - name: "Remove template flag using qm command"
       ansible.builtin.shell:
@@ -50,43 +44,10 @@
         PM_USER: "{{ proxmox_user }}"
         PM_TOKEN_ID: "{{ proxmox_token_id }}"
         PM_TOKEN_SECRET: "{{ proxmox_api_secret }}"
-      when: clone_job_result.finished  # ✅ Diperbaiki
+      when: clone_result.changed
       register: qm_result
       retries: 3
       delay: 5
-
-    - name: "Configure VM disk to be writable"
-      ansible.builtin.shell:
-        cmd: "qm set {{ new_vmid }} --scsi0 {{ proxmox_storage }}:vm-{{ new_vmid }}-disk-0,cache=writeback,discard=on"
-      environment:
-        PM_API_URL: "https://{{ proxmox_host }}:8006/api2/json"
-        PM_USER: "{{ proxmox_user }}"
-        PM_TOKEN_ID: "{{ proxmox_token_id }}"
-        PM_TOKEN_SECRET: "{{ proxmox_api_secret }}"
-      when: qm_result is defined and qm_result.changed
-      register: disk_config_result
-      retries: 3
-      delay: 2
-
-    - name: "Wait 10 seconds after configuration"
-      ansible.builtin.wait_for:
-        timeout: 10
-      when: disk_config_result is defined and disk_config_result.changed
-
-    - name: "Check if VM exists and is ready"
-      community.general.proxmox_kvm:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-        node: "{{ proxmox_node }}"
-        vmid: "{{ new_vmid }}"
-        state: stopped
-      register: vm_status
-      retries: 10
-      delay: 5
-      until: vm_status is not failed
-      ignore_errors: yes
 
     - name: "Start the newly created VM {{ new_vmid }}"
       community.general.proxmox_kvm:
@@ -101,4 +62,4 @@
       delay: 5
       until: true
       ignore_errors: yes
-      when: vm_status is not failed
+      when: clone_result.changed

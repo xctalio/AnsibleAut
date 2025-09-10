@@ -28,6 +28,7 @@
         clone: "{{ template_vmid }}"
         vmid: "{{ new_vmid }}"
         name: "{{ new_vm_name }}"
+        timeout: 600  # 10 menit untuk proses kloning
       register: clone_result
 
     - name: "Start the newly created VM {{ new_vmid }}"

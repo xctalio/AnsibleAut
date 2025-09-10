@@ -31,24 +31,36 @@
         timeout: 600
       register: clone_result
 
-    - name: "Convert template to VM (remove template flag)"
-      community.general.proxmox_kvm:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-        node: "{{ proxmox_node }}"
-        vmid: "{{ new_vmid }}"
-        template: no
+    - name: "Remove template flag using qm command"
+      ansible.builtin.shell:
+        cmd: "qm set {{ new_vmid }} --template 0"
+      environment:
+        PM_API_URL: "https://{{ proxmox_host }}:8006/api2/json"
+        PM_USER: "{{ proxmox_user }}"
+        PM_TOKEN_ID: "{{ proxmox_token_id }}"
+        PM_TOKEN_SECRET: "{{ proxmox_api_secret }}"
       when: clone_result.changed
-      register: convert_result
-      retries: 5
-      delay: 3
+      register: qm_result
+      retries: 3
+      delay: 5
 
-    - name: "Wait 10 seconds after conversion"
+    - name: "Configure VM disk to be writable"
+      ansible.builtin.shell:
+        cmd: "qm set {{ new_vmid }} --scsi0 {{ proxmox_node }}:vm-{{ new_vmid }}-disk-0,cache=writeback,discard=on"
+      environment:
+        PM_API_URL: "https://{{ proxmox_host }}:8006/api2/json"
+        PM_USER: "{{ proxmox_user }}"
+        PM_TOKEN_ID: "{{ proxmox_token_id }}"
+        PM_TOKEN_SECRET: "{{ proxmox_api_secret }}"
+      when: clone_result.changed
+      register: disk_config_result
+      retries: 3
+      delay: 2
+
+    - name: "Wait 10 seconds after configuration"
       ansible.builtin.wait_for:
         timeout: 10
-      when: convert_result.changed
+      when: disk_config_result.changed
 
     - name: "Start the newly created VM {{ new_vmid }}"
       community.general.proxmox_kvm:

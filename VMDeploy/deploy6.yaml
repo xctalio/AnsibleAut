@@ -23,18 +23,24 @@
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"  # Sekarang variabel ini terdefinisi
+        api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
         clone: "{{ template_vmid }}"
         vmid: "{{ new_vmid }}"
         name: "{{ new_vm_name }}"
+      register: clone_result
 
     - name: "Start the newly created VM {{ new_vmid }}"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"  # Sekarang variabel ini terdefinisi
+        api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
         vmid: "{{ new_vmid }}"
         state: started
+      retries: 10  # Mencoba maksimal 10 kali
+      delay: 5     # Menunggu 5 detik antara setiap percobaan
+      until: true  # Akan mencoba sampai berhasil
+      ignore_errors: yes  # Tidak gagal selama masih dalam proses retry
+      when: clone_result.changed  # Hanya jalankan jika kloning berhasil

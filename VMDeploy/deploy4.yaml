@@ -1,5 +1,5 @@
 ---
-- name: "Deploy and Start a New VM from Proxmox Template"
+- name: "Create New VM from Scratch"
   hosts: localhost
   connection: local
   gather_facts: no
@@ -13,56 +13,55 @@
     proxmox_token_id: "demov1"
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
+    proxmox_storage: "local-lvm"
     template_vmid: 100
-    new_vmid: 100
+    new_vmid: 101  # Gunakan VMID yang berbeda
     new_vm_name: "freshbakevm-ubuntu"
 
   tasks:
-    - name: "Clone template {{ template_vmid }} to new VM {{ new_vmid }}"
+    - name: "Create new VM"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        clone: "{{ template_vmid }}"
         vmid: "{{ new_vmid }}"
         name: "{{ new_vm_name }}"
-        timeout: 600
-      register: clone_result
+        memory: 2048
+        cores: 2
+        sockets: 1
+        ostype: "l26"  # Linux 2.6/3.x kernel
+        scsi0: "{{ proxmox_storage }}:20,cache=writeback,discard=on"
+        net0: "virtio,bridge=vmbr0"
+        boot: "c"
+        bootdisk: "scsi0"
+        state: "present"
+      register: vm_created
 
-    - name: "Remove template flag using qm command"
+    - name: "Import disk from template"
       ansible.builtin.shell:
-        cmd: "qm set {{ new_vmid }} --template 0"
+        cmd: "qm importdisk {{ new_vmid }} /var/lib/vz/images/{{ template_vmid }}/vm-{{ template_vmid }}-disk-0.raw {{ proxmox_storage }}"
       environment:
         PM_API_URL: "https://{{ proxmox_host }}:8006/api2/json"
         PM_USER: "{{ proxmox_user }}"
         PM_TOKEN_ID: "{{ proxmox_token_id }}"
         PM_TOKEN_SECRET: "{{ proxmox_api_secret }}"
-      when: clone_result.changed
-      register: qm_result
-      retries: 3
-      delay: 5
+      when: vm_created.changed
+      register: import_result
 
-    - name: "Configure VM disk to be writable"
+    - name: "Attach imported disk to VM"
       ansible.builtin.shell:
-        cmd: "qm set {{ new_vmid }} --scsi0 {{ proxmox_node }}:vm-{{ new_vmid }}-disk-0,cache=writeback,discard=on"
+        cmd: "qm set {{ new_vmid }} --scsi0 {{ proxmox_storage }}:vm-{{ new_vmid }}-disk-0,cache=writeback,discard=on"
       environment:
         PM_API_URL: "https://{{ proxmox_host }}:8006/api2/json"
         PM_USER: "{{ proxmox_user }}"
         PM_TOKEN_ID: "{{ proxmox_token_id }}"
         PM_TOKEN_SECRET: "{{ proxmox_api_secret }}"
-      when: clone_result.changed
-      register: disk_config_result
-      retries: 3
-      delay: 2
+      when: import_result.changed
+      register: attach_result
 
-    - name: "Wait 10 seconds after configuration"
-      ansible.builtin.wait_for:
-        timeout: 10
-      when: disk_config_result.changed
-
-    - name: "Start the newly created VM {{ new_vmid }}"
+    - name: "Start the new VM {{ new_vmid }}"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
@@ -71,8 +70,4 @@
         node: "{{ proxmox_node }}"
         vmid: "{{ new_vmid }}"
         state: started
-      retries: 10
-      delay: 5
-      until: true
-      ignore_errors: yes
-      when: clone_result.changed
+      when: attach_result.changed

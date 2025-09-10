@@ -1,5 +1,5 @@
 ---
-- name: "Deploy and Start a New VM from Proxmox"
+- name: "Deploy and Start a New VM from Proxmox Template"
   hosts: localhost
   connection: local
   gather_facts: no
@@ -14,10 +14,11 @@
     proxmox_api_secret: "{{ proxmox_api_secret }}"  # Referensi dari secrets.yml
     proxmox_node: "pve"
     template_vmid: 100
+    new_vmid: 100
     new_vm_name: "freshbakevm-ubuntu"
 
   tasks:
-    - name: "Clone template {{ template_vmid }} to new VM"
+    - name: "Clone template {{ template_vmid }} to new VM {{ new_vmid }}"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"

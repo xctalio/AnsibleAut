@@ -1,5 +1,5 @@
 ---
-- name: "Deploy and Start a New VM from Proxmox Template"
+- name: "Clone Existing VM/Template and Configure"
   hosts: localhost
   connection: local
   gather_facts: no
@@ -11,32 +11,63 @@
     proxmox_host: "192.168.210.135"
     proxmox_user: "root@pam"
     proxmox_token_id: "demov1"
+    proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
-    template_vmid: 100
-    new_vmid: 100
-    new_vm_name: "freshbakevm-ubuntu"
+    template_vm: UbuntuServTemplate
+    new_vm_name: "cloned-vm"
+    new_vm_id: 9999  # ID numerik untuk VM baru
 
   tasks:
-    - name: "Clone template {{ template_vmid }} to new VM {{ new_vmid }}"
+    - name: "Clone VM/template to new VM"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
-
         node: "{{ proxmox_node }}"
-        clone: "{{ template_vmid }}"
-        vmid: "{{ new_vmid }}"
+        clone: "{{ template_vm }}"
         name: "{{ new_vm_name }}"
-        # Kita HAPUS 'state: started' dari tugas ini
+        vmid: "{{ new_vm_id }}"
+        storage: local-lvm
+        format: qcow2
+        full: true
+        timeout: 500
+      register: clone_result
 
-    - name: "Start the newly created VM {{ new_vmid }}"
+    - name: "Wait for VM to be ready"
+      pause:
+        seconds: 30
+      when: clone_result.changed
+
+    - name: "Start the cloned VM"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
-
         node: "{{ proxmox_node }}"
-        vmid: "{{ new_vmid }}"
-        state: started # Tugas ini HANYA untuk menyalakan VM
+        vmid: "{{ new_vm_id }}"
+        state: started
+      when: clone_result.changed
+
+    - name: "Wait for VM to boot"
+      pause:
+        seconds: 60
+      when: clone_result.changed
+
+    - name: "Check VM status"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_vm_id }}"
+        status: current
+      register: vm_status
+      when: clone_result.changed
+
+    - name: "Debug VM status"
+      debug:
+        var: vm_status
+      when: clone_result.changed

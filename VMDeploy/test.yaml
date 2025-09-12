@@ -37,6 +37,6 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ new_vmid }}"
+        name: "{{ new_vmid }}"
         state: started
       when: clone_result.changed

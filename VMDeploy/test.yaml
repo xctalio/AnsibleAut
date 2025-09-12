@@ -1,5 +1,5 @@
 ---
-- name: "Clone VM with Auto VM ID"
+- name: "Clone Existing VM/Template"
   hosts: localhost
   connection: local
   gather_facts: no
@@ -13,32 +13,30 @@
     proxmox_token_id: "demov1"
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
-    template_vmid: 100
+    template_vm: UbuntuServTemplate  # ID VM/template yang akan di-clone
+    new_vm_name: "cloned-vm"  # Nama untuk VM baru
 
   tasks:
-    - name: "Get used VM IDs via SSH"
-      become: yes
-      shell:
-        cmd: "qm list | awk 'NR>1 {print $1}'"
-      register: used_vm_ids
-
-    - name: "Find available VM ID starting from 900"
-      set_fact:
-        new_vmid: "{{ item }}"
-      with_sequence: start=900 end=999
-      when: item not in used_vm_ids.stdout_lines
-      register: available_id
-      ignore_errors: yes
-
-    - name: "Clone template to new VM"
+    - name: "Clone VM/template to new VM"
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        clone: "{{ template_vmid }}"
+        clone: "{{ template_vm }}"  # ID VM/template sumber
+        name: "{{ new_vm_name }}"     # Nama untuk VM baru
+        full: true                    # Full clone (false untuk linked clone)
+        timeout: 300                  # Timeout 5 menit
+      register: clone_result
+
+    - name: "Start the cloned VM"
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
         vmid: "{{ new_vmid }}"
-        name: "clone-{{ new_vmid }}"
-        timeout: 300
-      when: available_id is defined
+        state: started
+      when: clone_result.changed

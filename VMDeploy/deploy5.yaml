@@ -13,9 +13,8 @@
     proxmox_token_id: "demov1"
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
-    template_vm: UbuntuServTemplate
+    template_vm: ahlelele
     new_vm_name: "cloned-vm"
-    new_vm_id: 9999  # ID numerik untuk VM baru
 
   tasks:
     - name: "Clone VM/template to new VM"
@@ -27,7 +26,6 @@
         node: "{{ proxmox_node }}"
         clone: "{{ template_vm }}"
         name: "{{ new_vm_name }}"
-        vmid: "{{ new_vm_id }}"
         storage: local-lvm
         format: qcow2
         full: true
@@ -46,7 +44,7 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ new_vm_id }}"
+        name: "{{ new_vm_name }}"
         state: started
       when: clone_result.changed
 
@@ -62,7 +60,7 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ new_vm_id }}"
+        name: "{{ new_vm_name }}"
         status: current
       register: vm_status
       when: clone_result.changed

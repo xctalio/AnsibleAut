@@ -53,17 +53,15 @@
         seconds: 60
       when: clone_result.changed
 
-    - name: "Check VM status"
+    - name: "Execute GRUB repair via Proxmox console"
       community.general.proxmox:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        name: "{{ new_vm_name }}"
-        status: current
-      register: vm_status
-      when: clone_result.changed
+        vmid: "{{ new_vm_id }}"
+        command: "sendkey ctrl-alt-del"
 
     - name: "Debug VM status"
       debug:

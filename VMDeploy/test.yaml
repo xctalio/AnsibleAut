@@ -26,8 +26,10 @@
         node: "{{ proxmox_node }}"
         clone: "{{ template_vm }}"  # ID VM/template sumber
         name: "{{ new_vm_name }}"     # Nama untuk VM baru
+        storage: local-lvm
+        format: qcow2
         full: true                    # Full clone (false untuk linked clone)
-        timeout: 300                  # Timeout 5 menit
+        timeout: 500                  # Timeout 5 menit
       register: clone_result
 
     - name: "Start the cloned VM"

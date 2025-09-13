@@ -1,69 +1,25 @@
----
-- name: "Clone Existing VM/Template and Configure"
-  hosts: localhost
-  connection: local
-  gather_facts: no
-
-  vars_files:
-    - secrets.yml
-
+- name: Proxmox Stuff
+  host: pve
   vars:
-    proxmox_host: "192.168.210.135"
-    proxmox_user: "root@pam"
-    proxmox_token_id: "demov1"
-    proxmox_api_secret: "{{ proxmox_api_secret }}"
-    proxmox_node: "pve"
-    template_vm: ahlelele
-    new_vm_name: "cloned-vm"
-
+   name: ubuntu
   tasks:
-    - name: "Clone VM/template to new VM"
-      community.general.proxmox_kvm:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-        node: "{{ proxmox_node }}"
-        clone: "{{ template_vm }}"
-        name: "{{ new_vm_name }}"
-        storage: local-lvm
-        format: qcow2
-        full: true
-        timeout: 500
-      register: clone_result
-
-    - name: "Wait for VM to be ready"
-      pause:
-        seconds: 30
-      when: clone_result.changed
-
-    - name: "Start the cloned VM"
-      community.general.proxmox_kvm:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-        node: "{{ proxmox_node }}"
-        name: "{{ new_vm_name }}"
+    - setfact:
+      machine_name: "freshubuntu"
+    - proxmox_kvm:
+        api_user    : root@pam
+        api_password: 7c749f03-f8ce-4f46-aedb-5a61c301f927
+        api_host    : 192.168.210.135
+        clone       : UbuntuServTemplate
+        name        : "{{ machine_name }}"
+        node        : pve
+        storage     : local-lvm
+        format      : qcow2
+        timeout     : 500
+    - name: start vm
+      proxmox_kvm:
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        api_host: "{{ api_host }}"
+        name: "{{ machine_name }}"
+        node: pve
         state: started
-      when: clone_result.changed
-
-    - name: "Wait for VM to boot"
-      pause:
-        seconds: 60
-      when: clone_result.changed
-
-    - name: "Execute GRUB repair via Proxmox console"
-      community.general.proxmox:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-        node: "{{ proxmox_node }}"
-        name: "{{ new_vm_name }}"
-        command: "sendkey ctrl-alt-del"
-
-    - name: "Debug VM status"
-      debug:
-        var: vm_status
-      when: clone_result.changed

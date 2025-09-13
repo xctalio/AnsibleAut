@@ -1,0 +1,89 @@
+---
+- name: "Clone Existing Proxmox Container (CT)"
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - secrets.yml
+
+  vars:
+    proxmox_host: "192.168.210.135"
+    proxmox_user: "root@pam"
+    proxmox_token_id: "demov1"
+    proxmox_api_secret: "{{ proxmox_api_secret }}"
+    proxmox_node: "pve"
+    template_ct: "100"  # ID CT template yang akan di-clone
+    new_ct_id: "200"    # ID untuk CT baru (harus unik)
+    new_ct_name: "cloned-ct"  # Nama untuk CT baru
+    storage_target: "local-lvm"
+
+  tasks:
+    - name: "Check if target CT ID already exists"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        validate_certs: no
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_ct_id }}"
+        state: present
+      register: ct_check
+      ignore_errors: yes
+      failed_when: false
+
+    - name: "Fail if CT ID already exists"
+      fail:
+        msg: "CT ID {{ new_ct_id }} already exists! Choose a different ID."
+      when: ct_check.vmid is defined and ct_check.vmid == new_ct_id|int
+
+    - name: "Clone CT template to new container"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        validate_certs: no
+        node: "{{ proxmox_node }}"
+        vmid: "{{ template_ct }}"    # ID CT template sumber
+        newid: "{{ new_ct_id }}"     # ID untuk CT baru
+        hostname: "{{ new_ct_name }}" # Hostname untuk CT baru
+        storage: "{{ storage_target }}"
+        full: true                   # Full clone
+        timeout: 300
+      register: clone_result
+
+    - name: "Start the cloned container"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        validate_certs: no
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_ct_id }}"
+        state: started
+      when: clone_result.changed
+
+    - name: "Wait for container to start"
+      pause:
+        seconds: 10
+
+    - name: "Get container status"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        validate_certs: no
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_ct_id }}"
+      register: ct_status
+
+    - name: "Show deployment results"
+      debug:
+        msg:
+          - "Container {{ new_ct_name }} (ID: {{ new_ct_id }}) successfully deployed!"
+          - "Status: {{ ct_status.status }}"
+          - "IP Address: {{ ct_status.ip }}"

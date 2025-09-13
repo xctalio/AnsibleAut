@@ -1,5 +1,5 @@
 - name: Proxmox Stuff
-  host: pve
+  host: localhost
   vars:
    name: ubuntu
   tasks:

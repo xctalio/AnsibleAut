@@ -1,5 +1,5 @@
 ---
-- name: "Clone Existing Container (CT) Template"
+- name: "Clone CT Template by Name"
   hosts: localhost
   connection: local
   gather_facts: no
@@ -13,61 +13,50 @@
     proxmox_token_id: "demov1"
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
-    template_ct: "CTedgeTemplate"  # Nama template CT
-    new_ct_id: 200  # HARUS ditambahkan - ID untuk CT baru
+    template_name: "CTedgeTemplate"  # Nama template
+    new_ct_id: 200
     new_ct_name: "cloned-container"
     storage: "local-lvm"
-    target_node: "pve"
 
   tasks:
-    - name: "Check if target CT ID is available"
+    - name: "Get list of containers to find template ID"
       community.general.proxmox:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ new_ct_id }}"
-        hostname: "temp-check"  # HARUS ditambahkan
         validate_certs: no
-      register: ct_check
-      ignore_errors: yes
+      register: containers_list
 
-    - name: "Fail if CT ID already exists"
+    - name: "Find template ID by name"
+      set_fact:
+        template_id: "{{ item.vmid }}"
+      loop: "{{ containers_list.lxc }}"
+      when: item.name == template_name
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Fail if template not found"
       fail:
-        msg: "CT ID {{ new_ct_id }} already exists. Please choose a different ID."
-      when: ct_check is not failed
+        msg: "Template '{{ template_name }}' not found on node {{ proxmox_node }}"
+      when: template_id is not defined
 
-    - name: "Clone CT template to new container"
+    - name: "Clone the container template"
       community.general.proxmox:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        clone: "{{ template_ct }}"  # Parameter yang benar: 'clone'
-        vmid: "{{ new_ct_id }}"     # Parameter yang benar: 'vmid' untuk ID baru
-        hostname: "{{ new_ct_name }}"  # Parameter yang benar: 'hostname'
+        clone: "{{ template_id }}"   # Gunakan ID yang ditemukan
+        vmid: "{{ new_ct_id }}"
+        hostname: "{{ new_ct_name }}"
         storage: "{{ storage }}"
-        target: "{{ target_node }}"
         full: true
         timeout: 300
       register: clone_result
-
-    - name: "Configure network for cloned CT"
-      community.general.proxmox:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-        node: "{{ proxmox_node }}"
-        vmid: "{{ new_ct_id }}"
-        hostname: "{{ new_ct_name }}"  # HARUS ditambahkan
-        net0: "name=eth0,bridge=vmbr0,ip=dhcp"
-        cores: 2
-        memory: 2048
-        swap: 512
-      when: clone_result.changed
+      when: template_id is defined
 
     - name: "Start the cloned container"
       community.general.proxmox:
@@ -76,20 +65,11 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ new_ct_id }}"  # Gunakan 'vmid' bukan 'name'
+        vmid: "{{ new_ct_id }}"
         state: started
       when: clone_result.changed
 
-    - name: "Wait for container to boot"
-      wait_for:
-        host: "{{ proxmox_host }}"
-        port: 22
-        delay: 10
-        timeout: 300
-      delegate_to: localhost
-      when: clone_result.changed
-
-    - name: "Display clone results"
+    - name: "Display results"
       debug:
-        msg: "CT {{ new_ct_id }} ({{ new_ct_name }}) has been successfully cloned and started!"
+        msg: "CT {{ new_ct_id }} cloned from {{ template_name }} (ID: {{ template_id }})"
       when: clone_result.changed

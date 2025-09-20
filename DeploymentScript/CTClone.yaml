@@ -13,8 +13,7 @@
     proxmox_token_id: "demov1"
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
-    template_ct: 100 # ID CT template yang akan di-clone
-    new_ct_id: 200     # ID untuk CT baru
+    template_ct: CTedgeTemplate # ID CT template yang akan di-clone
     new_ct_name: "cloned-container"  # Nama untuk CT baru
     storage: "local-lvm"
     target_node: "pve"  # Node target untuk CT baru
@@ -27,7 +26,6 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ new_ct_id }}"
         validate_certs: no
       register: ct_check
       ignore_errors: yes
@@ -44,8 +42,7 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ template_ct }}"
-        cloneid: "{{ new_ct_id }}"
+        ct_template: "{{ template_ct }}"
         hostname: "{{ new_ct_name }}"
         storage: "{{ storage }}"
         target: "{{ target_node }}"
@@ -74,7 +71,7 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ new_ct_id }}"
+        name: "{{ new_ct_name }}"
         state: started
       when: clone_result.changed
 

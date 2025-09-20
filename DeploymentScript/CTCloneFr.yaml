@@ -1,3 +1,4 @@
+---
 - name: "Clone CT Template by Name"
   hosts: localhost
   connection: local
@@ -17,7 +18,7 @@
     storage: "local-lvm"
 
   tasks:
-    - name: "Get template ID by name"
+    - name: "Get list of all containers to find template ID"
       community.general.proxmox:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
@@ -25,18 +26,18 @@
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
         vmid: "all"
-      register: proxmox_vms
+        state: list
+      register: containers_list
 
-    - name: "Extract template ID from results"
+    - name: "Find template ID by name"
       set_fact:
         template_id: "{{ item.vmid }}"
-      loop: "{{ proxmox_vms.value }}"
-      when: item.name == template_name and item.template == 1
-
-    - name: "Debug template ID"
-      debug:
-        msg: "Found template ID: {{ template_id }}"
-      when: template_id is defined
+      loop: "{{ containers_list.results }}"
+      when: 
+        - item.name is defined
+        - item.name == template_name
+        - item.template == 1
+      fail_msg: "Template dengan nama '{{ template_name }}' tidak ditemukan"
 
     - name: "Clone the container template"
       community.general.proxmox:
@@ -51,7 +52,11 @@
         full: true
         timeout: 300
       register: clone_result
-      when: template_id is defined
+
+    - name: "Get ID of the newly created container"
+      set_fact:
+        new_ct_id: "{{ clone_result.vmid }}"
+      when: clone_result.changed
 
     - name: "Start the cloned container"
       community.general.proxmox:
@@ -60,11 +65,21 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ clone_result.vmid }}"
+        vmid: "{{ new_ct_id }}"
         state: started
+      when: clone_result.changed
+
+    - name: "Wait for container to be fully started"
+      pause:
+        seconds: 10
       when: clone_result.changed
 
     - name: "Display results"
       debug:
-        msg: "CT {{ new_ct_name }} cloned from {{ template_name }} (ID: {{ template_id }})"
+        msg: "CT {{ new_ct_id }} ({{ new_ct_name }}) berhasil di-clone dari template {{ template_name }} (ID: {{ template_id }})"
       when: clone_result.changed
+
+    - name: "Display error if cloning failed"
+      debug:
+        msg: "Gagal melakukan cloning: {{ clone_result.msg }}"
+      when: clone_result.failed

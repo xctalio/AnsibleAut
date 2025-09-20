@@ -1,0 +1,70 @@
+- name: "Clone CT Template by Name"
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - secrets.yml
+
+  vars:
+    proxmox_host: "192.168.210.135"
+    proxmox_user: "root@pam"
+    proxmox_token_id: "demov1"
+    proxmox_api_secret: "{{ proxmox_api_secret }}"
+    proxmox_node: "pve"
+    template_name: "CTedgeTemplate"
+    new_ct_name: "cloned-container"
+    storage: "local-lvm"
+
+  tasks:
+    - name: "Get template ID by name"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "all"
+      register: proxmox_vms
+
+    - name: "Extract template ID from results"
+      set_fact:
+        template_id: "{{ item.vmid }}"
+      loop: "{{ proxmox_vms.value }}"
+      when: item.name == template_name and item.template == 1
+
+    - name: "Debug template ID"
+      debug:
+        msg: "Found template ID: {{ template_id }}"
+      when: template_id is defined
+
+    - name: "Clone the container template"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        clone: "{{ template_id }}"
+        name: "{{ new_ct_name }}"
+        storage: "{{ storage }}"
+        full: true
+        timeout: 300
+      register: clone_result
+      when: template_id is defined
+
+    - name: "Start the cloned container"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ clone_result.vmid }}"
+        state: started
+      when: clone_result.changed
+
+    - name: "Display results"
+      debug:
+        msg: "CT {{ new_ct_name }} cloned from {{ template_name }} (ID: {{ template_id }})"
+      when: clone_result.changed

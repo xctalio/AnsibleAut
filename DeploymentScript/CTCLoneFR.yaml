@@ -1,0 +1,39 @@
+---
+- name: "Clone CT Template"
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - secrets.yml
+
+  vars:
+    proxmox_host: "192.168.210.135"
+    proxmox_user: "root@pam"
+    proxmox_token_id: "demov1"
+    proxmox_api_secret: "{{ proxmox_api_secret }}"
+    proxmox_node: "pve"
+    template_ct: "CTedgeTemplate"
+    new_ct_id: 200
+    new_ct_name: "cloned-container"
+
+  tasks:
+    - name: "Clone and start CT"
+      community.general.proxmox_lxc:  # Gunakan modul khusus LXC
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ template_ct }}"
+        newid: "{{ new_ct_id }}"
+        hostname: "{{ new_ct_name }}"
+        storage: "local-lvm"
+        state: started
+        timeout: 300
+      register: result
+
+    - name: "Show result"
+      debug:
+        msg: "CT {{ new_ct_id }} created successfully!"
+      when: result.changed

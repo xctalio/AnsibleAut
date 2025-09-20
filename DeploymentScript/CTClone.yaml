@@ -14,34 +14,10 @@
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
     template_name: "CTedgeTemplate"  # Nama template
-    new_ct_id: 200
     new_ct_name: "cloned-container"
     storage: "local-lvm"
 
   tasks:
-    - name: "Get list of containers to find template ID"
-      community.general.proxmox:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_token_id: "{{ proxmox_token_id }}"
-        api_token_secret: "{{ proxmox_api_secret }}"
-        node: "{{ proxmox_node }}"
-        validate_certs: no
-      register: containers_list
-
-    - name: "Find template ID by name"
-      set_fact:
-        template_id: "{{ item.vmid }}"
-      loop: "{{ containers_list.lxc }}"
-      when: item.name == template_name
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: "Fail if template not found"
-      fail:
-        msg: "Template '{{ template_name }}' not found on node {{ proxmox_node }}"
-      when: template_id is not defined
-
     - name: "Clone the container template"
       community.general.proxmox:
         api_host: "{{ proxmox_host }}"
@@ -50,8 +26,7 @@
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
         clone: "{{ template_id }}"   # Gunakan ID yang ditemukan
-        vmid: "{{ new_ct_id }}"
-        hostname: "{{ new_ct_name }}"
+        name: "{{ new_ct_name }}"
         storage: "{{ storage }}"
         full: true
         timeout: 300
@@ -65,7 +40,7 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ new_ct_id }}"
+        name: "{{ new_ct_name }}"
         state: started
       when: clone_result.changed
 

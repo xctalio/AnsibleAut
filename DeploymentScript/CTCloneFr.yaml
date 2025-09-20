@@ -37,7 +37,11 @@
         - item.name is defined
         - item.name == template_name
         - item.template == 1
-      fail_msg: "Template dengan nama '{{ template_name }}' tidak ditemukan"
+
+    - name: "Fail if template not found"
+      fail:
+        msg: "Template dengan nama '{{ template_name }}' tidak ditemukan"
+      when: template_id is not defined
 
     - name: "Clone the container template"
       community.general.proxmox:

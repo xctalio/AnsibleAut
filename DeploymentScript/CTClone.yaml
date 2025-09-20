@@ -13,7 +13,7 @@
     proxmox_token_id: "demov1"
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
-    template_ct: 9000  # ID CT template yang akan di-clone
+    template_ct: 100 # ID CT template yang akan di-clone
     new_ct_id: 200     # ID untuk CT baru
     new_ct_name: "cloned-container"  # Nama untuk CT baru
     storage: "local-lvm"

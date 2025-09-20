@@ -1,0 +1,93 @@
+---
+- name: "Clone Existing Container (CT) Template"
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - secrets.yml
+
+  vars:
+    proxmox_host: "192.168.210.135"
+    proxmox_user: "root@pam"
+    proxmox_token_id: "demov1"
+    proxmox_api_secret: "{{ proxmox_api_secret }}"
+    proxmox_node: "pve"
+    template_ct: 9000  # ID CT template yang akan di-clone
+    new_ct_id: 200     # ID untuk CT baru
+    new_ct_name: "cloned-container"  # Nama untuk CT baru
+    storage: "local-lvm"
+    target_node: "pve"  # Node target untuk CT baru
+
+  tasks:
+    - name: "Check if target CT ID is available"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_ct_id }}"
+        validate_certs: no
+      register: ct_check
+      ignore_errors: yes
+
+    - name: "Fail if CT ID already exists"
+      fail:
+        msg: "CT ID {{ new_ct_id }} already exists. Please choose a different ID."
+      when: ct_check is not failed
+
+    - name: "Clone CT template to new container"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ template_ct }}"
+        cloneid: "{{ new_ct_id }}"
+        hostname: "{{ new_ct_name }}"
+        storage: "{{ storage }}"
+        target: "{{ target_node }}"
+        full: true
+        timeout: 300
+      register: clone_result
+
+    - name: "Configure network for cloned CT"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_ct_id }}"
+        net0: "name=eth0,bridge=vmbr0,ip=dhcp"
+        cores: 2
+        memory: 2048
+        swap: 512
+      when: clone_result.changed
+
+    - name: "Start the cloned container"
+      community.general.proxmox:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_api_secret }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ new_ct_id }}"
+        state: started
+      when: clone_result.changed
+
+    - name: "Wait for container to boot"
+      wait_for:
+        host: "{{ proxmox_host }}"
+        port: 22
+        delay: 10
+        timeout: 300
+      delegate_to: localhost
+      when: clone_result.changed
+
+    - name: "Display clone results"
+      debug:
+        msg: "CT {{ new_ct_id }} ({{ new_ct_name }}) has been successfully cloned and started!"
+      when: clone_result.changed

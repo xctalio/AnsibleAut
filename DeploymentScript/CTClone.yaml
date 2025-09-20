@@ -13,10 +13,11 @@
     proxmox_token_id: "demov1"
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
-    template_ct: CTedgeTemplate # ID CT template yang akan di-clone
-    new_ct_name: "cloned-container"  # Nama untuk CT baru
+    template_ct: "CTedgeTemplate"  # Nama template CT
+    new_ct_id: 200  # HARUS ditambahkan - ID untuk CT baru
+    new_ct_name: "cloned-container"
     storage: "local-lvm"
-    target_node: "pve"  # Node target untuk CT baru
+    target_node: "pve"
 
   tasks:
     - name: "Check if target CT ID is available"
@@ -26,6 +27,8 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
+        vmid: "{{ new_ct_id }}"
+        hostname: "temp-check"  # HARUS ditambahkan
         validate_certs: no
       register: ct_check
       ignore_errors: yes
@@ -42,8 +45,9 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        ct_template: "{{ template_ct }}"
-        new_ct_name: "{{ new_ct_name }}"
+        clone: "{{ template_ct }}"  # Parameter yang benar: 'clone'
+        vmid: "{{ new_ct_id }}"     # Parameter yang benar: 'vmid' untuk ID baru
+        hostname: "{{ new_ct_name }}"  # Parameter yang benar: 'hostname'
         storage: "{{ storage }}"
         target: "{{ target_node }}"
         full: true
@@ -58,6 +62,7 @@
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
         vmid: "{{ new_ct_id }}"
+        hostname: "{{ new_ct_name }}"  # HARUS ditambahkan
         net0: "name=eth0,bridge=vmbr0,ip=dhcp"
         cores: 2
         memory: 2048
@@ -71,7 +76,7 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        name: "{{ new_ct_name }}"
+        vmid: "{{ new_ct_id }}"  # Gunakan 'vmid' bukan 'name'
         state: started
       when: clone_result.changed
 

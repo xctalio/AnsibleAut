@@ -1,4 +1,3 @@
----
 - name: "Clone Existing VM/Template"
   hosts: localhost
   connection: local
@@ -14,7 +13,7 @@
     proxmox_api_secret: "{{ proxmox_api_secret }}"
     proxmox_node: "pve"
     template_vm: UbuntuServTemplate  # ID VM/template yang akan di-clone
-    new_vm_name: "cloned-vm"  # Nama untuk VM baru
+    new_vm_name: "cloned-vm"         # Nama untuk VM baru
 
   tasks:
     - name: "Clone VM/template to new VM"
@@ -24,13 +23,13 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        clone: "{{ template_vm }}"  # ID VM/template sumber
-        name: "{{ new_vm_name }}"     # Nama untuk VM baru
+        clone: "{{ template_vm }}"
+        name: "{{ new_vm_name }}"
         storage: local-lvm
         format: qcow2
-        full: true                    # Full clone (false untuk linked clone)
-        timeout: 500                  # Timeout 5 menit
-      register: clone_result
+        full: true
+        timeout: 500
+      register: clone_result  # <-- Menyimpan hasil, termasuk vmid baru
 
     - name: "Start the cloned VM"
       community.general.proxmox_kvm:
@@ -39,6 +38,6 @@
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_api_secret }}"
         node: "{{ proxmox_node }}"
-        name: "{{ new_vm_name }}"
+        vmid: "{{ clone_result.vmid }}" 
         state: started
       when: clone_result.changed

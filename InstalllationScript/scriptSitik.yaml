@@ -1,0 +1,14 @@
+---
+- name: Update dan Upgrade Paket Debian/Ubuntu
+  hosts: proxmox_vms  # Menargetkan grup yang kita buat di file inventory
+  become: yes         # Menjalankan perintah sebagai root (menggunakan sudo)
+
+  tasks:
+    - name: "Update apt-cache (setara dengan apt-get update)"
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600 # Cache valid selama 1 jam (opsional)
+
+    - name: "Upgrade semua paket sistem (setara dengan apt-get upgrade)"
+      ansible.builtin.apt:
+        upgrade: 'dist' # 'dist' lebih pintar dalam menangani dependensi
